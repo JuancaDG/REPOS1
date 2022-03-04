@@ -1,2 +1,2 @@
 # REPOS1
-# PRACTICANDO como editar mi REMOTO
+ PRACTICANDO como editar mi REMOTO
