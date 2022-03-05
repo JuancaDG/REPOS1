@@ -1,0 +1,124 @@
+# TALLER 3 
+#PREGUNTA N°1 -----------------------------------------------------------------
+
+library(readxl)
+Inmobiliario <- read_excel("Inmobiliario.xlsx")
+attach(Inmobiliario)
+
+
+Inmobiliario2<-Inmobiliario
+Inmobiliario2$Calidad<-factor(Inmobiliario2$Calidad, levels=c("1","2","3"), 
+                              labels=c("alta","media","baja"))
+
+
+# a) Sin Recodificar_(Categoria "alta" es la "REFERENCIAL")
+modelo = lm(Precio~Calidad,Inmobiliario2)
+summary(modelo)                                                     # modelo: 194.407+84.522*(x1)+318.032*(x2)
+
+
+
+# b) Recodificando_(Categoria "baja" es la "REFERENCIAL")
+library(dplyr)
+library(forcats)
+Inmobiliario2 |>
+  mutate(Calidad = fct_relevel(Calidad,
+                               c("baja","alta","media"))) -> Inmobiliario2
+
+modelo2 = lm(Precio~Calidad,Inmobiliario2)
+summary(modelo2)                                                   # modelo2: 512.440-318.032*(x1)-233.510*(x2)
+
+
+
+
+#PREGUNTA N°2 -----------------------------------------------------------------
+#Estilo + CalidadVida * Area
+modelo3 <- lm(Precio~Estilo+Calidad*Area,Inmobiliario2)
+summary(modelo3)
+
+
+
+
+
+#PREGUNTA N°3 ----------------------------------------------------------------- 
+#Estilo + CalidadVida + Area
+modelo4 <- lm(Precio~Estilo+Calidad+Area,Inmobiliario2)
+summary(modelo4)
+
+#PREGUNTA N°4 -----------------------------------------------------------------
+
+modelo3 |> anova(modelo4)
+
+modelo4 |> anova(modelo3)
+
+#Nuestro pvalor es mayor que alfa. Por lo tanto NO se rechaza la H0 donde B3=0
+#Segun el analisis es conveniente quedarnos con el modelo 4 (sin interacción).
+
+
+#PREGUNTA N°5 -----------------------------------------------------------------
+(modelo4 |> resid() -> residuales)
+residuales |> hist(freq=FALSE,
+                   main="Histograma de los residuales",
+                   xlab="Residuales",
+                   ylab="Densidad",
+                   col ="dodgerblue2")
+residuales |> density() |> lines()
+
+# Segun el grafico este modelo1 no cumple con el supuesto de normalidad 
+
+
+#PREGUNTA N°6 -----------------------------------------------------------------
+modelo4 |> plot(which=1)
+
+# Segun el grafico este modelo1  cumple con el supuesto de homocedaticidad 
+# y podemos notar la presencia de outliers
+
+
+# Prueba de Breusch Pagan
+library(car)
+modelo |> ncvTest()
+
+
+
+#PREGUNTA N°7 ----------------------------------------------------------------- 
+
+residuales |> 
+  TSA::acf(lag = 100, plot=F) |> 
+  autoplot() +
+  labs(x = "Desfase",
+       y = "Autocorrelación") + 
+  theme_minimal()
+
+#Interpretación : Visualizamos las autocorrelaciones con el respectivo orden de
+#15, 53, 81, 99 se encuentra fuera del límite de confianza, por lo que presentan
+#autocorrelación. Se concluye que los errores no son independientes.
+
+modelo4 |> durbinWatsonTest(alternative = "two.sided",
+                            max.lag = 20,
+                            reps    = 1e5)
+# Visualizamos que la autocorrelación de orden 15 tiene un p.valor menor qu
+# alfa, lo que coincide con nuestra gráfica de indepedencia de errores.
+
+#PREGUNTA N°11 -----------------------------------------------------------------
+
+modelo4 %>% dfbetas 
+
+DFBetas <- modelo4 %>% dfbetas %>% data.frame %>% 
+  rename(dfbeta0=1,dfbeta1=2,dfbeta2=3, dfbeta3=4) %>% abs >= 2/sqrt(200)
+
+DFBetas <- as.data.frame(DFBetas)
+
+DFBetas %>%
+  filter(dfbeta0 %in% "TRUE") %>%
+  row.names()
+
+DFBetas %>%
+  filter(dfbeta1 %in% "TRUE") %>%
+  row.names()
+
+DFBetas %>%
+  filter(dfbeta2 %in% "TRUE") %>%
+  row.names()
+
+DFBetas %>%
+  filter(dfbeta3 %in% "TRUE") %>%
+  row.names()
